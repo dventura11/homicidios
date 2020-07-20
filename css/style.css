@@ -1,0 +1,32 @@
+header {
+  background-color: #d6d8db;
+}
+
+footer {
+  background-color: #d6d8db;
+}
+
+img.logo {
+  height: 120px;
+}
+
+path.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5;
+}
+
+circle.pointer {
+  fill: none;
+  stroke: red;
+  r: 3;
+}
+
+text.pointer-text {
+  alignment-baseline: middle;
+}
+
+text.pointer-text tspan{
+  font-weight: bold;
+}
+
