@@ -1,7 +1,7 @@
 $(document).ready(function() {
 
   var months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-  var width = 1280;
+  var width = 1100;
   var height = 600;
   var xPadding = 25;
   var yPadding = 5;
@@ -25,11 +25,32 @@ $(document).ready(function() {
     return d3.csv("data/nacional.csv");
   }
 
+  // source: https://brendansudol.com/writing/responsive-d3
+  function responsivefy(svg) {
+    var container = d3.select(svg.node().parentNode),
+      width = parseInt(svg.style("width")),
+      height = parseInt(svg.style("height")),
+      aspect = width / height;
+
+    svg.attr("viewBox", "0 0 " + width + " " + height)
+      .attr("perserveAspectRatio", "xMinYMid")
+      .call(resize);
+
+      d3.select(window).on("resize." + container.attr("id"), resize);
+
+      function resize() {
+        var targetWidth = parseInt(container.style("width"));
+        svg.attr("width", targetWidth);
+        svg.attr("height", Math.round(targetWidth / aspect));
+      }
+  }
+
   function renderLayout() {
     svg = d3.select("#graphic") 
       .append("svg")
       .attr("width" , width)
-      .attr("height" , height);
+      .attr("height" , height)
+      .call(responsivefy);
 
     xAxis = d3.axisBottom()
       .scale(xScale)
