@@ -22,11 +22,16 @@ circle.pointer {
   r: 3;
 }
 
-text.pointer-text {
+text.fixed-text {
   alignment-baseline: middle;
+}
+
+text.fixed-text tspan{
+  font-weight: bold;
 }
 
 text.pointer-text tspan{
   font-weight: bold;
 }
+
 
