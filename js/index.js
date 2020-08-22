@@ -1,13 +1,13 @@
-var months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-var width = 1100;
-var height = 600;
-var xPadding = 25;
-var yPadding = 40;
-var yExtra = 3;
-var xText = 50;
-var yText = 20;
-var yTextSpacing = 20;
-var radius = 1;
+const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const WIDTH = 1200;
+const HEIGHT = 600;
+const X_PADDING = 25;
+const Y_PADDING = 20;
+const Y_EXTRA = 2;
+const X_TEXT = 50;
+const Y_TEXT = 20;
+const Y_TEXT_SPACING = 20;
+const TRANSITION_DURATION = 1000;
 
 var currentData;
 var nationalData;
@@ -58,29 +58,31 @@ function responsivefy(svg) {
 function renderLayout() {
   svg = d3.select("#graphic") 
     .append("svg")
-    .attr("width" , width)
-    .attr("height" , height)
+    .attr("width" , WIDTH)
+    .attr("height" , HEIGHT)
     .call(responsivefy);
+
+  xAxis = svg.append("g")
+    .attr("transform", `translate(0, ${HEIGHT - Y_PADDING})`);
+
+  yAxis = svg.append("g")
+    .transition().duration(500)
+    .attr("transform", `translate(${X_PADDING}, 0)`);
 }
 
 function renderAxis() {
-  xAxisDef = d3.axisBottom()
+    xAxisDef = d3.axisBottom()
     .scale(xScale)
     .ticks(d3.timeYear.every(1))
     .tickFormat(d3.timeFormat("%Y"));
-
-  xAxis = svg.append("g")
-    .call(xAxisDef)
-    .attr("transform", "translate(0, " + (height - yPadding) + ")");
-
-  yAxis = svg.append("g")
-    .call(d3.axisLeft(yScale))
-    .attr("transform", "translate(" + xPadding + ", 0)");
+ 
+  xAxis.call(xAxisDef);
+  yAxis.call(d3.axisLeft(yScale))
 }
 
 var formatDate = function(d) {   
   year = d.date.substring(0,4);
-  month = months[Number(d.date.substring(5,7)) - 1];
+  month = MONTHS[Number(d.date.substring(5,7)) - 1];
   formattedDate = month + " " + year;
   return formattedDate;
 };
@@ -143,20 +145,14 @@ function defineXScale(data) {
       d3.min(data, d=> d.date),
       d3.max(data, d=> d.date)
     ])
-      .range([xPadding, width]);
+      .range([X_PADDING, WIDTH]);
 }
 
 function defineYScale(data) {
   yScale = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.tasa + yExtra)])
-    .range([height - yPadding, 0]);
+    .domain([0, d3.max(data, d => d.tasa + Y_EXTRA)])
+    .range([HEIGHT - Y_PADDING, 0]);
 }
-
-var defineScales = function(data) {
-  defineXScale(data);
-  defineYScale(data);
-  return data;
-};
 
 var getXScale = function(d) {
   return xScale(d.date);
@@ -167,32 +163,16 @@ var getYScale = function(d) {
 }
 
 function renderLine(data) {
-  svg.append("path")
-    .datum(data)
-    .transition()
-    .duration(1000)
-    .attr("class", "line")
-    .attr("d", d3.line()
-      .x(getXScale)
-      .y(getYScale)
-    )
-}
-
-function updateLine(data) {
-  svg.selectAll("path").remove();
-  renderLine(data);
-  /*
-   svg.selectAll("path")
+   svg
+     .selectAll("path")
      .datum(data)
      .transition()
-     .duration(1000)
+     .duration(TRANSITION_DURATION/2)
      .attr("class", "line")
      .attr("d", d3.line()
-       .x(getXScale)
-       .y(getYScale)
-     )
-     */
-    }
+       .x(d => getXScale(d) - X_PADDING)
+       .y(getYScale)); 
+}
 
 function showPointer() {
   pointer.style("opacity", 1);
@@ -227,7 +207,6 @@ function renderPointerInfo() {
   x = xScale.invert(d3.mouse(this)[0]);
   i = xBisector(currentData, x, 1);
   current = currentData[i];
-
   renderPointerCircle(current);
   renderPointerText(current);
 }
@@ -249,31 +228,26 @@ function renderPositionInfo() {
     .append('text')
     .style("opacity", 0)
     .attr("class", "fixed-text")
-    .attr("x", xText)
-    .attr("y", yText);
+    .attr("x", X_TEXT)
+    .attr("y", Y_TEXT);
 
   dateText = fixedText.append("tspan");
   rateText = fixedText.append("tspan")
-    .attr("x", xText)
-    .attr("dy", yTextSpacing);
+    .attr("x", X_TEXT)
+    .attr("dy", Y_TEXT_SPACING);
   totalText = fixedText.append("tspan")
-    .attr("x", xText)
-    .attr("dy", yTextSpacing);
-
+    .attr("x", X_TEXT)
+    .attr("dy", Y_TEXT_SPACING);
+  hidePointer();
   svg.append('rect')
     .style("fill", "none")
     .style("pointer-events", "all")
-    .attr('width', width)
-    .attr('height', height)
+    .attr('width', WIDTH)
+    .attr('height', HEIGHT)
     .on('mouseover', showPointer)
     .on('mousemove', renderPointerInfo)
     .on('mouseout', hidePointer);
 }
-
-var line = d3.line()
-  // .defined(d => d.state == 'GUANAJUATO')
-  .x(getXScale)
-  .y(getYScale);
 
 var assignNational = function(data) {
   nationalData = data;
@@ -297,34 +271,13 @@ var assignStates = function(data) {
     return data;
 };
 
-function renderStatesLines(data) {
-  path = svg.append("g")
-    .attr("fill", "none")
-    .attr("stroke", "steelblue")
-    .attr("stroke-width", 1.5)
-    .attr("stroke-linejoin", "round")
-    .attr("stroke-linecap", "round")
-    .selectAll("path")
-    .data(data)
-    .join("path")
-    .style("mix-blend-mode", "multiply")
-    .attr("d", d => line(Array.from(d.values)));
-}
-
-var renderNational = function(data) {
+var render = function(data) {
   currentData = data;
-  defineScales(data);
-  renderLayout();
+  defineYScale(data)
+  defineXScale(data);
   renderAxis();
   renderLine(data);
   renderPositionInfo();
-};
-
-var updateGraph = function(data) {
-  currentData = data;
-  defineYScale(data)
-  updateLine(data);
-  yAxis.transition().duration(1000).call(d3.axisLeft(yScale));
 };
 
 var renderStates = function() {
@@ -335,13 +288,13 @@ var renderCategory = function() {
   category = this.textContent;
   d3.selectAll(".category-option").classed('active', false);
   if (category == "Nacional") {
-    updateGraph(nationalData);
+    render(nationalData);
     d3.selectAll("#national-button").classed('active', true);
     d3.selectAll("#state-select")
       .classed('active', false)
       .text("Estados");
   } else {
-    updateGraph(Array.from(statesData.find(d => d.state == category).values));
+    render(Array.from(statesData.find(d => d.state == category).values));
     d3.selectAll("#state-select")
       .classed('active', true)
       .text(category);
@@ -353,10 +306,12 @@ var addButtonsEvents = function() {
     .on("click", renderCategory);
 };
 
+renderLayout();
+
 loadNationalData()
   .then(format)
   .then(assignNational)
-  .then(renderNational);
+  .then(render);
   loadStatesData()
     .then(format)
     .then(convertToSeriesFormat)
