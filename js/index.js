@@ -7,7 +7,7 @@ const Y_EXTRA = 2;
 const X_TEXT = 50;
 const Y_TEXT = 20;
 const Y_TEXT_SPACING = 20;
-const TRANSITION_DURATION = 1000;
+const TRANSITION_DURATION = 500;
 
 var currentData;
 var nationalData;
@@ -62,22 +62,40 @@ function renderLayout() {
     .attr("height" , HEIGHT)
     .call(responsivefy);
 
+  xScale = d3.scaleTime()
+    .range([X_PADDING, WIDTH]);
+
+  yScale = d3.scaleLinear()
+    .range([HEIGHT - Y_PADDING, 0]);
+
   xAxis = svg.append("g")
     .attr("transform", `translate(0, ${HEIGHT - Y_PADDING})`);
 
   yAxis = svg.append("g")
     .transition().duration(500)
     .attr("transform", `translate(${X_PADDING}, 0)`);
-}
 
-function renderAxis() {
-    xAxisDef = d3.axisBottom()
+  xAxisDef = d3.axisBottom()
     .scale(xScale)
     .ticks(d3.timeYear.every(1))
     .tickFormat(d3.timeFormat("%Y"));
- 
-  xAxis.call(xAxisDef);
-  yAxis.call(d3.axisLeft(yScale))
+
+  yAxisDef = d3.axisLeft(yScale);
+
+}
+
+function renderAxis(data) {
+  xScale.domain([d3.min(data, d=> d.date), d3.max(data, d=> d.date)]);
+  yScale.domain([0, d3.max(data, d => d.tasa + Y_EXTRA)]);
+
+  xAxis
+    .transition()
+    .duration(TRANSITION_DURATION)
+    .call(xAxisDef);
+  yAxis
+    .transition()
+    .duration(TRANSITION_DURATION)
+    .call(yAxisDef)
 }
 
 var formatDate = function(d) {   
@@ -139,21 +157,6 @@ var convertToSeriesFormat = function(data) {
   return Array.from(seriesData.values());
 };
 
-function defineXScale(data) {
-  xScale = d3.scaleTime()
-    .domain([
-      d3.min(data, d=> d.date),
-      d3.max(data, d=> d.date)
-    ])
-      .range([X_PADDING, WIDTH]);
-}
-
-function defineYScale(data) {
-  yScale = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.tasa + Y_EXTRA)])
-    .range([HEIGHT - Y_PADDING, 0]);
-}
-
 var getXScale = function(d) {
   return xScale(d.date);
 }
@@ -163,15 +166,15 @@ var getYScale = function(d) {
 }
 
 function renderLine(data) {
-   svg
-     .selectAll("path")
-     .datum(data)
-     .transition()
-     .duration(TRANSITION_DURATION/2)
-     .attr("class", "line")
-     .attr("d", d3.line()
-       .x(d => getXScale(d) - X_PADDING)
-       .y(getYScale)); 
+  svg
+    .selectAll("path")
+    .datum(data)
+    .transition()
+    .duration(TRANSITION_DURATION)
+    .attr("class", "line")
+    .attr("d", d3.line()
+      .x(d => getXScale(d) - X_PADDING)
+      .y(getYScale)); 
 }
 
 function showPointer() {
@@ -273,9 +276,7 @@ var assignStates = function(data) {
 
 var render = function(data) {
   currentData = data;
-  defineYScale(data)
-  defineXScale(data);
-  renderAxis();
+  renderAxis(data);
   renderLine(data);
   renderPositionInfo();
 };
