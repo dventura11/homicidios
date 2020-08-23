@@ -7,9 +7,13 @@ const Y_EXTRA = 2;
 const X_TEXT = 50;
 const Y_TEXT = 20;
 const Y_TEXT_SPACING = 20;
+const INTERVAL_DURATION = 1500;
 const TRANSITION_DURATION = 500;
+const NATIONAL_CATEGORY = "Nacional";
+const ITERATE_CATEGORY = "Iterar";
 
 var currentData;
+var filteredData;
 var nationalData;
 var statesData;
 var statesSet;
@@ -22,10 +26,15 @@ var pointer;
 var pointerText;
 var fixedText;
 var dateText;
+var EntityText;
 var rateText;
 var pointerRateText;
 var totalText;
 var xBisector;
+var minDate;
+var maxDate;
+var interval;
+var currentIndex = 0;
 
 function loadNationalData() {
   return d3.csv("data/nacional.csv");
@@ -72,7 +81,6 @@ function renderLayout() {
     .attr("transform", `translate(0, ${HEIGHT - Y_PADDING})`);
 
   yAxis = svg.append("g")
-    .transition().duration(500)
     .attr("transform", `translate(${X_PADDING}, 0)`);
 
   xAxisDef = d3.axisBottom()
@@ -84,18 +92,55 @@ function renderLayout() {
 
 }
 
+var setRangeDates = function(values) {
+  d3.select("#minDate").text(values[0]);
+  d3.select("#maxDate").text(values[1]);
+  minDate = new Date(values[0].toString());
+  maxDate = new Date((values[1]+1).toString());
+};
+
+var filterByDate = function(data) {
+  if (data.date < minDate) {
+    return false;
+  }
+  if (data.date > maxDate) {
+    return false;
+  }
+  return true;
+};
+
+var updateDates = function(values) {
+  setRangeDates(values.newValue);
+  render(currentData);
+};
+
+var initializeRangeSlide = function(data) {
+  range = d3.extent(data, d=> d.date);
+  min = range[0].getFullYear();
+  max = range[1].getFullYear();
+  sliderOptions = { 
+    min: min, 
+    max: max, 
+    value: [min, max]
+  };
+  slider = new Slider("#yearRange", sliderOptions);
+  slider.on('change', updateDates);
+  setRangeDates(slider.getValue());
+  return data;
+}
+
 function renderAxis(data) {
-  xScale.domain([d3.min(data, d=> d.date), d3.max(data, d=> d.date)]);
+  xScale.domain(d3.extent(data, d=> d.date));
   yScale.domain([0, d3.max(data, d => d.tasa + Y_EXTRA)]);
 
   xAxis
     .transition()
     .duration(TRANSITION_DURATION)
     .call(xAxisDef);
-  yAxis
-    .transition()
-    .duration(TRANSITION_DURATION)
-    .call(yAxisDef)
+    yAxis
+      .transition()
+      .duration(TRANSITION_DURATION)
+      .call(yAxisDef)
 }
 
 var formatDate = function(d) {   
@@ -109,8 +154,7 @@ var formatRow = function(d) {
   d.formattedDate = formatDate(d);
   d.count = Number(d.count);
   d.formattedCount =  d.count.toLocaleString();
-  d.date = new Date(d.date);
-  d.date.setDate(d.date.getDate());
+  d.date = new Date(d.date+"-15");
   if (d.tasa) {
     d.tasa = Number(d.tasa);
   } else {
@@ -123,22 +167,6 @@ var formatRow = function(d) {
 var format = function(data) {
   data.forEach(formatRow);
   return data;
-};
-
-var convertToStackFormat = function(data) {
-  seriesData = new Map();
-  statesSet = new Set();
-  data.forEach(d => {
-    if (!seriesData.has(d.formattedDate)) {
-      seriesData.set(d.formattedDate, { 
-        "date": d.date,
-        "formattedDate": d.formattedDate
-      });
-    }
-    seriesData.get(d.formattedDate)[d.state] = Number(d.formattedRate);
-    statesSet.add(d.state);
-  });
-  return Array.from(seriesData.values());
 };
 
 var convertToSeriesFormat = function(data) {
@@ -154,7 +182,10 @@ var convertToSeriesFormat = function(data) {
     seriesData.get(d.state).values.add(d);
     statesSet.add(d.state);
   });
-  return Array.from(seriesData.values());
+
+  resultData = Array.from(seriesData.values());
+  resultData = resultData.sort((a, b) => a.state.localeCompare(b.state));
+  return resultData;
 };
 
 var getXScale = function(d) {
@@ -166,15 +197,26 @@ var getYScale = function(d) {
 }
 
 function renderLine(data) {
-  svg
-    .selectAll("path")
+  line = d3.line()
+    .x(d => getXScale(d) - X_PADDING)
+    .y(getYScale);
+
+  path = svg
+    .selectAll('path')
     .datum(data)
-    .transition()
-    .duration(TRANSITION_DURATION)
-    .attr("class", "line")
-    .attr("d", d3.line()
-      .x(d => getXScale(d) - X_PADDING)
-      .y(getYScale)); 
+
+    path
+      .enter()
+      .append('path')
+      .merge(path)
+      .transition()
+      .duration(TRANSITION_DURATION)
+      .attr("class", "line")
+      .attr('d', line);
+
+      path
+        .exit()
+        .remove();
 }
 
 function showPointer() {
@@ -207,9 +249,12 @@ function renderPointerText(d) {
 }
 
 function renderPointerInfo() {
-  x = xScale.invert(d3.mouse(this)[0]);
-  i = xBisector(currentData, x, 1);
-  current = currentData[i];
+  xPosition = d3.mouse(this)[0];
+  x = xScale.invert(xPosition);
+  i = xBisector(filteredData, x);
+  i -= x.getDate() < 15 ? 1 : 0;
+  i = i < 0 ? 0 : i;
+  current = filteredData[i];
   renderPointerCircle(current);
   renderPointerText(current);
 }
@@ -233,6 +278,15 @@ function renderPositionInfo() {
     .attr("class", "fixed-text")
     .attr("x", X_TEXT)
     .attr("y", Y_TEXT);
+
+  entityText = svg.append('g')
+    .append('text')
+    .attr("class", "entity-text")
+    .attr("x", WIDTH/2)
+    .attr("y", Y_TEXT)
+    .append("tspan")
+    .text(NATIONAL_CATEGORY);
+
 
   dateText = fixedText.append("tspan");
   rateText = fixedText.append("tspan")
@@ -259,6 +313,7 @@ var assignNational = function(data) {
 
 var assignStates = function(data) {
   statesData = data;
+  currentIndex = statesData.length;
   selectStates = d3.select('#states-list')
     .selectAll('li.category-option a')
     .data(Array.from(statesSet).sort());
@@ -270,35 +325,92 @@ var assignStates = function(data) {
     .text(function(d) {
       return d
     });
-
-    return data;
+  return data;
 };
 
 var render = function(data) {
   currentData = data;
-  renderAxis(data);
-  renderLine(data);
-  renderPositionInfo();
+  filteredData = data.filter(filterByDate);
+  renderAxis(filteredData);
+  renderLine(filteredData);
+  return data;
 };
 
 var renderStates = function() {
   renderStatesLines(statesData);
 };
 
+var renderNext = function(d) {
+  currentIndex++;
+  currentIndex %= statesData.length + 1;
+  if (currentIndex == statesData.length) {
+    entityText.text(NATIONAL_CATEGORY);
+    render(nationalData);
+  } else {
+    currentState = statesData[currentIndex];
+    entityText.text(currentState.state);
+    d3.select("#state-select")
+      .text(currentState.state);
+    render(Array.from(currentState.values));
+  }
+};
+
+var stopInterval = function() {
+  if (interval) {
+   interval.stop(); 
+  }
+  interval = undefined;
+};
+
+var renderIterator = function() {
+  if (interval) {
+    return;
+  }
+  isIteratorActive = d3.select("#iterate-button").classed("active");
+  isNationalActive = d3.select("#national-button").classed("active");
+  currentState = d3.select("#state-select").text;
+  if (isIteratorActive) {
+    return;
+  }
+  d3.select("#iterate-button").classed('active', true);
+  d3.select("#state-select")
+    .classed('active', false);
+  interval = d3.interval(renderNext, INTERVAL_DURATION);
+};
+
+var renderNational = function() {
+  currentIndex = statesData.length;
+  render(nationalData);
+  d3.select("#national-button").classed('active', true);
+  d3.select("#state-select")
+    .classed('active', false)
+    .text("Estados");
+  entityText.text(NATIONAL_CATEGORY);
+  stopInterval();
+};
+
+var renderState = function() {
+  currentIndex = statesData.findIndex(d => d.state == category);
+  render(Array.from(statesData.find(d => d.state == category).values));
+  d3.select("#state-select")
+    .classed('active', true)
+    .text(category);
+    entityText.text(category);
+  stopInterval();
+};
+
 var renderCategory = function() {
   category = this.textContent;
   d3.selectAll(".category-option").classed('active', false);
-  if (category == "Nacional") {
-    render(nationalData);
-    d3.selectAll("#national-button").classed('active', true);
-    d3.selectAll("#state-select")
-      .classed('active', false)
-      .text("Estados");
-  } else {
-    render(Array.from(statesData.find(d => d.state == category).values));
-    d3.selectAll("#state-select")
-      .classed('active', true)
-      .text(category);
+  switch (category) {
+    case NATIONAL_CATEGORY:
+      renderNational();
+      break;
+    case ITERATE_CATEGORY:
+      renderIterator();
+      break;
+    default:
+      renderState();
   }
 };
 
@@ -308,10 +420,12 @@ var addButtonsEvents = function() {
 };
 
 renderLayout();
+renderPositionInfo();
 
 loadNationalData()
   .then(format)
   .then(assignNational)
+  .then(initializeRangeSlide)
   .then(render);
   loadStatesData()
     .then(format)

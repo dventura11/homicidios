@@ -7,6 +7,7 @@
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/bootstrap-slider.min.css">
     <link rel="stylesheet" href="css/style.css">
     <title>Homicidios en México</title>
   </head>
@@ -30,8 +31,8 @@
 
     <section class="controls my-4">
       <div class="container-lg">
-        <div class="row buttons"> 
-          <div class="col"> 
+        <div class="row"> 
+          <div class="col buttons"> 
             <div id="categories"  class="btn-group">
               <button type="button" id="national-button" class="btn btn-primary active category-option">Nacional</button>
               <div class="btn-group">
@@ -40,7 +41,14 @@
                 <ul class="dropdown-menu" id="states-list" role="menu">
                 </ul>
               </div>
+              <button type="button" id="iterate-button" class="btn btn-primary category-option">Iterar</button>
             </div>
+          </div>
+          <div class="col-6 p-2" > 
+              <label>Rango de años:</label>
+              <label id="minDate" class="px-3"></label>
+              <input id="yearRange" type="text"/>
+              <label id="maxDate" class="px-3"></label>
           </div>
         </div>
       </div>
@@ -81,6 +89,8 @@
     <script src="js/bootstrap.min.js"></script>
     <!-- D3 JavaScript -->
     <script src="js/d3.v5.min.js"></script>
+    <!-- Bootstrap slider -->
+    <script src="js/bootstrap-slider.min.js"></script>
     <!-- JavaScript -->
     <script src="js/index.js"></script>
   </body>

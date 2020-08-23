@@ -1,9 +1,13 @@
+body {
+  background-color: lightgray;
+}
+
 header {
-  background-color: #d6d8db;
+  background-color: gray;
 }
 
 footer {
-  background-color: #d6d8db;
+  background-color: gray;
 }
 
 img.logo {
@@ -13,7 +17,7 @@ img.logo {
 path.line {
   fill: none;
   stroke: steelblue;
-  stroke-width: 1.5;
+  stroke-width: 1;
 }
 
 circle.pointer {
@@ -26,6 +30,18 @@ text.fixed-text {
   alignment-baseline: middle;
 }
 
+text.entity-text {
+  font-family: "Arial Black", Gadget, sans-serif;
+  font-size: 28px;
+  letter-spacing: -0.2px;
+  word-spacing: 1px;
+  color: #2E2F33;
+  font-weight: 700;
+  text-decoration: none solid rgb(68, 68, 68);
+  font-style: normal;
+  font-variant: normal;
+  text-transform: uppercase;
+}
 text.fixed-text tspan{
   font-weight: bold;
 }
@@ -33,5 +49,3 @@ text.fixed-text tspan{
 text.pointer-text tspan{
   font-weight: bold;
 }
-
-
