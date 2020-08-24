@@ -1,13 +1,9 @@
-body {
+header {
   background-color: lightgray;
 }
 
-header {
-  background-color: gray;
-}
-
 footer {
-  background-color: gray;
+  background-color: lightgray;
 }
 
 img.logo {
